@@ -27,7 +27,7 @@ let gameVersion = "0.1";
 
 // 游戏的关于信息
 let aboutInfo = [  
-  "Game developed by: XUIAOHU SUN",
+  "Game developed by: XIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
   "Inspired by classic memory games."
 ];  
