@@ -1,6 +1,6 @@
 // 初始化游戏的行列数和卡牌尺寸
 let cols = 4, rows = 4;  
-let cardWidth = 160, cardHeight = 160, padding = 10;  
+let cardWidth = 140, cardHeight = 140, padding = 10;  
 
 // 最大点击次数和剩余点击次数
 let maxClicks = 20, remainingClicks = maxClicks;  
@@ -43,7 +43,7 @@ function preload() {
 
 // 初始化画布和字体
 function setup() {  
-  createCanvas(1600, 1000, WEBGL);  // 创建WebGL画布
+  createCanvas(1400, 700, WEBGL);  // 创建WebGL画布
   textFont(myFont);  // 设置字体
   noCursor();  // 可选：隐藏鼠标光标
 }  
@@ -96,7 +96,7 @@ function drawGame() {
 
 // 绘制返回按钮，位于左上角
 function drawReturnButton() {
-  drawButton("Back to Menu", -width / 2 + 170, -height / 2 + 50, () => {
+  drawButton("Back to Menu", -width / 2 + 180, -height / 2 + 50, () => {
     currentScreen = "menu";  // 切换到菜单界面
     initGame();  // 重置游戏状态
   });
@@ -120,7 +120,7 @@ function drawAbout() {
 
 // 绘制按钮
 function drawButton(label, x, y, onClick) {  
-  let w = 300, h = 80;  
+  let w = 200, h = 70;  
   let hovered = mouseX > width / 2 + x - w / 2 && mouseX < width / 2 + x + w / 2 &&  
                 mouseY > height / 2 + y - h / 2 && mouseY < height / 2 + y + h / 2;  
 
