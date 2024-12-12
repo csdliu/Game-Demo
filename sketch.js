@@ -1,9 +1,10 @@
 // 初始化游戏的行列数和卡牌尺寸
 let cols = 4, rows = 4;  
 let cardWidth = 140, cardHeight = 140, padding = 10;  
-
+let canvasWidth, canvasHeight;
 // 最大点击次数和剩余点击次数
 let maxClicks = 20, remainingClicks = maxClicks;  
+let offsetTop = 20;
 
 // 游戏状态变量
 let cards, revealed, matched, flipProgress;  
@@ -32,18 +33,30 @@ let aboutInfo = [
   "Inspired by classic memory games."
 ];  
 
+function updateCanvasSize() {
+  // 动态获取屏幕宽高，确保实时更新
+  canvasWidth = constrain(windowWidth * 0.8, 1100, 1600);
+  canvasHeight = constrain(windowHeight * 0.8, 800, 1000);
+}
+
+function windowResized() {
+  updateCanvasSize();  // 获取调整后的尺寸
+  resizeCanvas(canvasWidth, canvasHeight);
+}
+
 // 预加载资源
 function preload() {  
   myFont = loadFont('assets/font/AppleSDGothicNeo-Bold.ttf');  // 加载字体
   // 加载16张卡牌的正面图像
   for (let i = 0; i < 16; i++) cardFrontImages.push(loadImage(`assets/pictures/${i}.png`));  
   // 加载卡牌背面图像
-  cardBackImage = loadImage('assets/pictures/back.png');  
+  cardBackImage = loadImage('assets/pictures/Back2.png');  
 }  
 
 // 初始化画布和字体
 function setup() {  
-  createCanvas(1600, 800, WEBGL);  // 创建WebGL画布
+  updateCanvasSize();  // 确保画布尺寸在初始化时正确
+  createCanvas(canvasWidth, canvasHeight, WEBGL);
   textFont(myFont);  // 设置字体
   noCursor();  // 可选：隐藏鼠标光标
 }  
@@ -96,7 +109,7 @@ function drawGame() {
 
 // 绘制返回按钮，位于左上角
 function drawReturnButton() {
-  drawButton("Back to Menu", -width / 2 + 180, -height / 2 + 50, () => {
+  drawButton("Back to Menu", -width / 2 + 120, -height / 2 + 50, () => {
     currentScreen = "menu";  // 切换到菜单界面
     initGame();  // 重置游戏状态
   });
@@ -212,7 +225,7 @@ function drawBoard() {
     for (let j = 0; j < cols; j++) {
       // 计算每张卡牌的位置
       let x = j * (cardWidth + padding) - cols * (cardWidth + padding) / 2 + cardWidth / 2;
-      let y = i * (cardHeight + padding) - rows * (cardHeight + padding) / 2 + cardHeight / 2;
+      let y = i * (cardHeight + padding) - rows * (cardHeight + padding) / 2 + cardHeight / 2 + offsetTop;
       let progress = flipProgress[i][j];
 
       // 更新卡牌的翻转进度
