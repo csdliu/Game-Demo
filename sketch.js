@@ -50,7 +50,7 @@ function preload() {
   // 加载16张卡牌的正面图像
   for (let i = 0; i < 16; i++) cardFrontImages.push(loadImage(`assets/pictures/${i}.png`));  
   // 加载卡牌背面图像
-  cardBackImage = loadImage('assets/pictures/Back2.png');  
+  cardBackImage = loadImage('assets/pictures/back.png');  
 }  
 
 // 初始化画布和字体
