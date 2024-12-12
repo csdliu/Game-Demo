@@ -1,6 +1,6 @@
 // 初始化游戏的行列数和卡牌尺寸
 let cols = 4, rows = 4;  
-let cardWidth = 140, cardHeight = 140, padding = 10;  
+let cardWidth = 150, cardHeight = 150, padding = 10;  
 let canvasWidth, canvasHeight;
 // 最大点击次数和剩余点击次数
 let maxClicks = 20, remainingClicks = maxClicks;  
@@ -35,8 +35,8 @@ let aboutInfo = [
 
 function updateCanvasSize() {
   // 动态获取屏幕宽高，确保实时更新
-  canvasWidth = constrain(windowWidth * 0.9, 1100, 1600);
-  canvasHeight = constrain(windowHeight * 0.9, 800, 1000);
+  canvasWidth = constrain(windowWidth * 1.2, 1100, 1600);
+  canvasHeight = constrain(windowHeight * 1.2, 800, 1000);
 }
 
 function windowResized() {
