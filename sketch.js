@@ -43,7 +43,7 @@ function preload() {
 
 // 初始化画布和字体
 function setup() {  
-  createCanvas(1400, 700, WEBGL);  // 创建WebGL画布
+  createCanvas(1600, 800, WEBGL);  // 创建WebGL画布
   textFont(myFont);  // 设置字体
   noCursor();  // 可选：隐藏鼠标光标
 }  
