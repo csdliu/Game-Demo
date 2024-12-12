@@ -24,7 +24,7 @@ let predefinedMessages = [
 let cardFrontImages = [], cardBackImage, myFont;  
 
 // 游戏版本信息
-let gameVersion = "0.1";  
+let gameVersion = "0.2";  
 
 // 游戏的关于信息
 let aboutInfo = [  
