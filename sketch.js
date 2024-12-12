@@ -35,8 +35,8 @@ let aboutInfo = [
 
 function updateCanvasSize() {
   // 动态获取屏幕宽高，确保实时更新
-  canvasWidth = constrain(windowWidth * 0.8, 1100, 1600);
-  canvasHeight = constrain(windowHeight * 0.8, 800, 1000);
+  canvasWidth = constrain(windowWidth * 0.9, 1100, 1600);
+  canvasHeight = constrain(windowHeight * 0.9, 800, 1000);
 }
 
 function windowResized() {
