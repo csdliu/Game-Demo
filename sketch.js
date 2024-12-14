@@ -69,7 +69,7 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "test_0.2.1_sound";  
+let gameVersion = "test_0.3.1+p_12-15";  
 let aboutInfo = [  
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
@@ -1066,9 +1066,63 @@ function reorderMessages() {
   
   // 更新pairedCards数组，过滤掉可能的null值
   pairedCards = reorderedPairedCards.filter(pair => pair !== null);
+
+  // Debug输出
+  if (debug) {
+    console.log('Correctly placed pairs:', correctlyPlacedPairs);
+    console.log('Reordered messages:', pairedCards.map(p => Math.floor(p.cards[0].originalIndex / 2)));
+  }
 }
 
 // =============== 事件处理函数 ===============
+
+// 辅助函数：计算卡片对的边界
+function calculatePairBounds(pairPositions) {
+  let bounds = {
+    minX: Infinity,
+    maxX: -Infinity,
+    minY: Infinity,
+    maxY: -Infinity
+  };
+  
+  for (let pos of pairPositions) {
+    let cardX = pos.baseX + pos.dragX;
+    let cardY = pos.baseY + pos.dragY;
+    
+    bounds.minX = Math.min(bounds.minX, cardX - cardWidth/2);
+    bounds.maxX = Math.max(bounds.maxX, cardX + cardWidth/2);
+    bounds.minY = Math.min(bounds.minY, cardY - cardHeight/2);
+    bounds.maxY = Math.max(bounds.maxY, cardY + cardHeight/2);
+  }
+  
+  return bounds;
+}
+
+// 辅助函数：计算卡片对的 Z 轴顺序（根据 Y 坐标和正确放置状态）
+function calculateZIndex(pairPositions) {
+  // 使用第一张卡片的位置作为参考
+  let cardPos = pairPositions[0];
+  let y = cardPos.baseY + cardPos.dragY;
+  let originalPairIndex = Math.floor(cardPos.card.originalIndex / 2);
+  
+  // 如果卡片已正确放置，给予较低的 Z 轴值
+  if (correctlyPlacedPairs.includes(originalPairIndex)) {
+    return y - 10000; // 确保正确放置的卡片在底层
+  }
+  
+  return y; // 未放置的卡片按 Y 坐标排序
+}
+// 辅助函数：根据卡片对索引找到所属组
+function findGroupByPairIndex(pairIndex) {
+  const groups = [
+    { pairs: [0, 1], cells: [0, 2] },    // 左上组
+    { pairs: [2, 3], cells: [1, 3] },    // 右上组
+    { pairs: [4, 5], cells: [4, 5] },    // 左下组
+    { pairs: [6, 7], cells: [6, 7] }     // 右下组
+  ];
+  
+  return groups.find(group => group.pairs.includes(pairIndex));
+}
 
 // 鼠标按下事件处理
 // 修改鼠标事件相关函数，保持原有的激活功能
@@ -1080,32 +1134,38 @@ function mousePressed() {
     activePairIndex = -1;
     hasActuallyDragged = false;
     
-    // 从前往后（从最上层到最下层）检查卡片对
+    // 创建一个可见卡片对的数组，包含位置信息和层级
+    let visiblePairs = [];
     for (let pairIndex = 0; pairIndex < pairedCardsPositions.length; pairIndex++) {
       let pairPositions = pairedCardsPositions[pairIndex];
+      let originalPairIndex = Math.floor(pairPositions[0].card.originalIndex / 2);
       
-      // 计算这对卡片的边界框
-      let pairBounds = {
-        minX: Infinity,
-        maxX: -Infinity,
-        minY: Infinity,
-        maxY: -Infinity
-      };
+      // 检查卡片对是否已完成
+      const group = findGroupByPairIndex(originalPairIndex);
+      const isGroupComplete = group ? group.cells.every(cell => completedCells.has(cell)) : false;
       
-      // 计算整个卡片对的边界
-      for (let pos of pairPositions) {
-        let cardX = pos.baseX + pos.dragX;
-        let cardY = pos.baseY + pos.dragY;
-        
-        pairBounds.minX = Math.min(pairBounds.minX, cardX - cardWidth/2);
-        pairBounds.maxX = Math.max(pairBounds.maxX, cardX + cardWidth/2);
-        pairBounds.minY = Math.min(pairBounds.minY, cardY - cardHeight/2);
-        pairBounds.maxY = Math.max(pairBounds.maxY, cardY + cardHeight/2);
+      // 如果卡片对未完成或正在拖动，添加到可见列表
+      if (!isGroupComplete || (draggingCard && draggingCard.pair === pairPositions)) {
+        visiblePairs.push({
+          index: pairIndex,
+          positions: pairPositions,
+          bounds: calculatePairBounds(pairPositions),
+          zIndex: calculateZIndex(pairPositions)
+        });
       }
+    }
+    
+    // 按照 Z 轴顺序排序（视觉上的从上到下）
+    visiblePairs.sort((a, b) => b.zIndex - a.zIndex);
+    
+    // 检查点击
+    for (let pair of visiblePairs) {
+      let pairPositions = pair.positions;
+      let bounds = pair.bounds;
       
-      // 如果点击在这对卡片的范围内，选中这对卡片
-      if (mx >= pairBounds.minX && mx <= pairBounds.maxX &&
-          my >= pairBounds.minY && my <= pairBounds.maxY) {
+      // 如果点击在卡片对的范围内
+      if (mx >= bounds.minX && mx <= bounds.maxX &&
+          my >= bounds.minY && my <= bounds.maxY) {
         
         // 找到被点击的具体卡片
         for (let i = 0; i < pairPositions.length; i++) {
@@ -1132,6 +1192,7 @@ function mousePressed() {
     }
     draggingCard = null;
   } else if (currentScreen === "game" && gameStage === "matching") {
+    // 保持原有的匹配阶段逻辑不变
     if (!gameOver && !checking) {
       let mx = mouseX - width/2;
       let my = mouseY - height/2;
@@ -1141,11 +1202,10 @@ function mousePressed() {
       if (cardX >= 0 && cardX < cols && cardY >= 0 && cardY < rows && 
           !revealed[cardY][cardX] && !matched[cardY][cardX]) {
         revealed[cardY][cardX] = true;
-        //播放声音
         if (window.soundManager) {
-          window.soundManager.play('flip',{
-            volume: 0.5,         // 稍微降低音量
-            playbackRate: 1    // 正常播放速率
+          window.soundManager.play('flip', {
+            volume: 0.5,
+            playbackRate: 1
           });
         }
         if (firstCardX === -1) {
@@ -1393,6 +1453,13 @@ function checkSnapToOtherPairs(currentPair, deltaX, deltaY) {
   return { deltaX, deltaY };
 }
 
+// 添加调试函数
+function debugPrintState(cellIndex, pairCards) {
+  let originalPairIndex = Math.floor(pairCards[0].card.originalIndex / 2);
+  console.log(`Placing pair ${originalPairIndex} in cell ${cellIndex}`);
+  console.log('Current correctly placed pairs:', correctlyPlacedPairs);
+  console.log('Completed cells:', Array.from(completedCells));
+}
 
 // 修改 verifyGridPlacement 函数
 function verifyGridPlacement(cellIndex, pairCards) {
@@ -1414,6 +1481,7 @@ function verifyGridPlacement(cellIndex, pairCards) {
   if (cellIndex === correctPositions[originalPairIndex]) {
     if (!correctlyPlacedPairs.includes(originalPairIndex)) {
       correctlyPlacedPairs.push(originalPairIndex);
+      console.log(`Pair ${originalPairIndex} correctly placed in cell ${cellIndex}`);
       checkCompletedGroups();
       return true;
     }
