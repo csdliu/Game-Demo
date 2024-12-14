@@ -1483,7 +1483,9 @@ function verifyGridPlacement(cellIndex, pairCards) {
       correctlyPlacedPairs.push(originalPairIndex);
       console.log(`Pair ${originalPairIndex} correctly placed in cell ${cellIndex}`);
       checkCompletedGroups();
+      reorderMessages()
       return true;
+      
     }
   }
   return false;
