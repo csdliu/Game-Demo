@@ -56,7 +56,7 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "test_0.21_sound";  
+let gameVersion = "test_0.2";  
 let aboutInfo = [  
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
