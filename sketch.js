@@ -69,7 +69,7 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "test_0.3+p";  
+let gameVersion = "test_0.2.1_sound";  
 let aboutInfo = [  
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
@@ -282,6 +282,7 @@ function initGame() {
 
 // 添加绘制单个覆盖组的函数
 // 绘制单个覆盖组的函数
+// 修改覆盖图绘制函数
 function drawOverlayForGroup(groupIndex) {
   // 定义四组覆盖区域
   const overlayGroups = [
@@ -292,6 +293,7 @@ function drawOverlayForGroup(groupIndex) {
   ];
 
   const group = overlayGroups[groupIndex];
+  if (!group) return;
   
   // 计算网格的总高度
   const totalGridHeight = arrangementGrid.rows * arrangementGrid.cellHeight;
@@ -299,17 +301,16 @@ function drawOverlayForGroup(groupIndex) {
   let startY = -totalGridHeight / 2;
   let startX = -width/2 + arrangementGrid.x;
 
-  // 计算覆盖图像的中心位置
+  // 计算覆盖图像的位置
   const centerX = startX + (group.col * arrangementGrid.cellWidth) + arrangementGrid.cellWidth / 2;
   const centerY = startY + (group.row * arrangementGrid.cellHeight) + arrangementGrid.cellHeight;
 
-  // 绘制覆盖图像
   if (overlayImages[group.index]) {
     push();
     noStroke();
     translate(centerX, centerY);
     texture(overlayImages[group.index]);
-    // 调整平面大小以完全覆盖两个格子
+    // 调整平面大小以正确覆盖两个格子
     plane(arrangementGrid.cellWidth - arrangementGrid.padding,
           arrangementGrid.cellHeight * 2 - arrangementGrid.padding * 2);
     pop();
@@ -750,37 +751,33 @@ function initializePairedCardsPositions() {
   arrangementGrid.cells = Array(arrangementGrid.rows * arrangementGrid.cols).fill(null);
 }
 
-// 绘制所有配对卡牌
-// 绘制所有配对卡牌
-// 绘制所有配对卡牌
-// 更新的绘制所有配对卡牌函数
-function drawAllPairedCards() {
-  // 定义覆盖组映射关系
-  const overlayGroupMapping = {
-    0: [0, 2],  // 左上组: 0-1和2-3对卡牌
-    1: [1, 3],  // 右上组: 4-5和6-7对卡牌
-    2: [4, 5],  // 左下组: 8-9和10-11对卡牌
-    3: [6, 7]   // 右下组: 12-13和14-15对卡牌
-  };
 
-  // 第一步：绘制所有已固定但未被覆盖的卡牌
+// 修改 drawAllPairedCards 函数
+// 修改绘制所有配对卡牌的函数
+function drawAllPairedCards() {
+  // 组结构定义
+  const groups = [
+    {cells: [0, 2], pairs: [0, 1]},    // 左上组
+    {cells: [1, 3], pairs: [2, 3]},    // 右上组
+    {cells: [4, 5], pairs: [4, 5]},    // 左下组
+    {cells: [6, 7], pairs: [6, 7]}     // 右下组
+  ];
+
+  // 首先绘制所有卡牌
   for (let pairIndex = 0; pairIndex < pairedCardsPositions.length; pairIndex++) {
     let pairPositions = pairedCardsPositions[pairIndex];
     let originalPairIndex = Math.floor(pairPositions[0].card.originalIndex / 2);
     
-    // 找到这对卡牌属于哪个组
-    let groupIndex = Object.entries(overlayGroupMapping).find(([key, value]) => 
-      value.includes(originalPairIndex)
-    )?.[0];
+    // 找到这对卡牌所属的组
+    const group = groups.find(g => g.pairs.includes(originalPairIndex));
     
-    if (groupIndex !== undefined) {
-      const cellIndices = overlayGroupMapping[groupIndex];
-      const isGroupComplete = cellIndices.every(cell => completedCells.has(cell));
+    if (group) {
+      const isGroupComplete = group.cells.every(cell => completedCells.has(cell));
       
-      // 如果组未完成或者卡牌未固定，则绘制卡牌
-      if (!isGroupComplete && correctlyPlacedPairs.includes(originalPairIndex)) {
-        for (let i = pairPositions.length - 1; i >= 0; i--) {
-          let cardPos = pairPositions[i];
+      // 如果组未完成或者卡牌正在拖动，则显示卡牌
+      if (!isGroupComplete || (draggingCard && draggingCard.pair === pairPositions)) {
+        // 绘制卡牌
+        for (let cardPos of pairPositions) {
           push();
           noStroke();
           translate(cardPos.baseX + cardPos.dragX, cardPos.baseY + cardPos.dragY);
@@ -792,33 +789,13 @@ function drawAllPairedCards() {
     }
   }
 
-  // 第二步：绘制覆盖图
-  for (let overlayIndex = 0; overlayIndex < 4; overlayIndex++) {
-    const cellIndices = overlayGroupMapping[overlayIndex];
-    // 只有当组内所有卡牌对都正确放置时才显示覆盖图
-    const isGroupComplete = cellIndices.every(cell => completedCells.has(cell));
+  // 最后绘制完成组的覆盖图
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
+    const isGroupComplete = group.cells.every(cell => completedCells.has(cell));
     
     if (isGroupComplete) {
-      drawOverlayForGroup(overlayIndex);
-    }
-  }
-
-  // 第三步：绘制所有未固定的卡牌
-  for (let pairIndex = pairedCardsPositions.length - 1; pairIndex >= 0; pairIndex--) {
-    let pairPositions = pairedCardsPositions[pairIndex];
-    let originalPairIndex = Math.floor(pairPositions[0].card.originalIndex / 2);
-    
-    // 只绘制未正确放置的卡牌
-    if (!correctlyPlacedPairs.includes(originalPairIndex)) {
-      for (let i = pairPositions.length - 1; i >= 0; i--) {
-        let cardPos = pairPositions[i];
-        push();
-        noStroke();
-        translate(cardPos.baseX + cardPos.dragX, cardPos.baseY + cardPos.dragY);
-        texture(cardPos.card.image);
-        plane(cardWidth, cardHeight);
-        pop();
-      }
+      drawOverlayForGroup(groupIndex);
     }
   }
 }
@@ -962,62 +939,83 @@ function arrangePairedCards() {
 
 // 格子验证函数
 // 验证网格位置函数
+// 修改验证函数以更清晰地处理放置逻辑
 function verifyGridPlacement(cellIndex, pairCards) {
   let originalPairIndex = Math.floor(pairCards[0].card.originalIndex / 2);
   
-  // 定义每个格子对应的卡片对
+  // 定义正确位置映射
   const correctPositions = {
-    0: 0,  // 0-1对
-    1: 2,  // 4-5对
-    2: 1,  // 2-3对
-    3: 3,  // 6-7对
-    4: 4,  // 8-9对
-    5: 6,  // 12-13对
-    6: 5,  // 10-11对
-    7: 7   // 14-15对
+    0: 0,  // 0-1对在左上第一格
+    1: 2,  // 4-5对在右上第一格
+    2: 1,  // 2-3对在左上第二格
+    3: 3,  // 6-7对在右上第二格
+    4: 4,  // 8-9对在左下第一格
+    5: 6,  // 12-13对在左下第二格
+    6: 5,  // 10-11对在右下第一格
+    7: 7   // 14-15对在右下第二格
   };
 
   // 检查是否放在正确位置
   if (cellIndex === correctPositions[originalPairIndex]) {
     if (!correctlyPlacedPairs.includes(originalPairIndex)) {
       correctlyPlacedPairs.push(originalPairIndex);
-      
-      // 检查特定组合是否完成
+      console.log(`Pair ${originalPairIndex} correctly placed in cell ${cellIndex}`);
       checkCompletedGroups();
-      
-      reorderMessages();
+      return true;
     }
-    return true;
   }
   return false;
 }
 
 // 添加检查完成组的函数
+// 修改 checkCompletedGroups 函数来确保只有在两对卡片都正确放置时才标记为完成
+// 修改检查完成组的函数
+// 修改完成组检查函数，更精确地定义组的结构
 function checkCompletedGroups() {
-  // 右上组 (4-5, 6-7) 的特殊处理
-  if (correctlyPlacedPairs.includes(2) && correctlyPlacedPairs.includes(3)) {
-    completedCells.add(1);
-    completedCells.add(3);
-  }
+  // 清除之前的完成状态
+  completedCells.clear();
   
-  // 左上组 (0-1, 2-3)
-  if (correctlyPlacedPairs.includes(0) && correctlyPlacedPairs.includes(1)) {
-    completedCells.add(0);
-    completedCells.add(2);
-  }
-  
-  // 左下组 (8-9, 10-11)
-  if (correctlyPlacedPairs.includes(4) && correctlyPlacedPairs.includes(5)) {
-    completedCells.add(4);
-    completedCells.add(5);
-  }
-  
-  // 右下组 (12-13, 14-15)
-  if (correctlyPlacedPairs.includes(6) && correctlyPlacedPairs.includes(7)) {
-    completedCells.add(6);
-    completedCells.add(7);
+  // 定义组结构
+  const groups = [
+    {
+      name: "LeftTop",
+      topPair: 0,    // 0-1对
+      bottomPair: 1, // 2-3对
+      cells: [0, 2]
+    },
+    {
+      name: "RightTop",
+      topPair: 2,    // 4-5对
+      bottomPair: 3, // 6-7对
+      cells: [1, 3]
+    },
+    {
+      name: "LeftBottom",
+      topPair: 4,    // 8-9对
+      bottomPair: 5, // 10-11对
+      cells: [4, 5]
+    },
+    {
+      name: "RightBottom",
+      topPair: 6,    // 12-13对
+      bottomPair: 7, // 14-15对
+      cells: [6, 7]
+    }
+  ];
+
+  // 检查每个组
+  for (const group of groups) {
+    const isTopPairPlaced = correctlyPlacedPairs.includes(group.topPair);
+    const isBottomPairPlaced = correctlyPlacedPairs.includes(group.bottomPair);
+    
+    // 只有当组内两对卡片都正确放置时，才标记该组为完成
+    if (isTopPairPlaced && isBottomPairPlaced) {
+      group.cells.forEach(cell => completedCells.add(cell));
+      console.log(`${group.name} group completed fully`);
+    }
   }
 }
+
 
 
 // 重新排序提示消息的函数
@@ -1068,12 +1066,6 @@ function reorderMessages() {
   
   // 更新pairedCards数组，过滤掉可能的null值
   pairedCards = reorderedPairedCards.filter(pair => pair !== null);
-
-  // Debug输出
-  if (debug) {
-    console.log('Correctly placed pairs:', correctlyPlacedPairs);
-    console.log('Reordered messages:', pairedCards.map(p => Math.floor(p.cards[0].originalIndex / 2)));
-  }
 }
 
 // =============== 事件处理函数 ===============
@@ -1401,3 +1393,30 @@ function checkSnapToOtherPairs(currentPair, deltaX, deltaY) {
   return { deltaX, deltaY };
 }
 
+
+// 修改 verifyGridPlacement 函数
+function verifyGridPlacement(cellIndex, pairCards) {
+  let originalPairIndex = Math.floor(pairCards[0].card.originalIndex / 2);
+  
+  // 定义每个格子对应的卡片对
+  const correctPositions = {
+    0: 0,  // 0-1对
+    1: 2,  // 4-5对
+    2: 1,  // 2-3对
+    3: 3,  // 6-7对
+    4: 4,  // 8-9对
+    5: 6,  // 12-13对
+    6: 5,  // 10-11对
+    7: 7   // 14-15对
+  };
+
+  // 检查是否放在正确位置
+  if (cellIndex === correctPositions[originalPairIndex]) {
+    if (!correctlyPlacedPairs.includes(originalPairIndex)) {
+      correctlyPlacedPairs.push(originalPairIndex);
+      checkCompletedGroups();
+      return true;
+    }
+  }
+  return false;
+}
