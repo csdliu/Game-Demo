@@ -3,6 +3,16 @@
 let cols = 4, rows = 4;  
 let cardWidth = 160, cardHeight = 160, padding = 10;  
 let maxClicks = 20, remainingClicks = maxClicks;  
+let gridLabels = [
+  "(0-1)",   // 第一格
+  "(4-5)",   // 第二格
+  "(2-3)",   // 第三格
+  "(6-7)",   // 第四格
+  "(8-9)",   // 第五格
+  "(12-13)", // 第六格
+  "(10-11)", // 第七格
+  "(14-15)"  // 第八格
+];
 
 // 游戏状态变量
 let cards;              // 卡牌矩阵
@@ -24,6 +34,9 @@ let matchSoundPlayed = false;   // 匹配音效是否已播放的标志
 let cursorY = 0;       // 光标当前Y位置
 let targetCursorY = 0; // 光标目标Y位置
 let cursorLerpSpeed = 0.1; // 光标移动插值速度
+// 添加到全局变量定义部分
+let completedCells = new Set(); // 存储已完成的格子索引
+let overlayImages = []; // 存储覆盖图片
 
 // 添加到全局变量定义部分
 let arrangementGrid = {
@@ -56,7 +69,7 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "test_0.2.1_sound";  
+let gameVersion = "test_0.3+p";  
 let aboutInfo = [  
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
@@ -199,17 +212,22 @@ function windowResized() {
 }
 
 // 资源预加载
-async function preload() {  
+async function preload() {
   myFont = loadFont('assets/font/AppleSDGothicNeo-Bold.ttf');
   for (let i = 0; i < 16; i++) {
     cardFrontImages.push(loadImage(`assets/pictures/${i}.png`));
   }
   cardBackImage = loadImage('assets/pictures/back.png');
-  // 预加载所有音效
+  
+  // 加载覆盖图像
+  for (let i = 0; i < 4; i++) {
+    overlayImages.push(loadImage(`assets/overlay/overlay${i}.png`));
+  }
+  
   if (window.soundManager) {
     await window.soundManager.preloadAll();
   }
-}  
+} 
 
 // 游戏初始化设置
 function setup() {  
@@ -244,6 +262,58 @@ function initGame() {
   pairedCards = [];
   draggingCard = null;
   correctlyPlacedPairs = [];  // 重置正确放置的数组
+  completedCells = new Set();
+  correctlyPlacedPairs = [];
+  
+  // 确保 arrangementGrid 的属性被正确设置
+  arrangementGrid = {
+      cols: 2,
+      rows: 4,
+      x: 160,
+      y: 100,
+      cellWidth: 350,
+      cellHeight: 180,
+      padding: 10,
+      cells: Array(8).fill(null),
+      highlightColor: 'rgba(100, 149, 237, 0.2)'
+  };
+
+}
+
+// 添加绘制单个覆盖组的函数
+// 绘制单个覆盖组的函数
+function drawOverlayForGroup(groupIndex) {
+  // 定义四组覆盖区域
+  const overlayGroups = [
+    { cells: [0, 2], index: 0, col: 0, row: 0 },    // 左上：0-1, 2-3
+    { cells: [1, 3], index: 1, col: 1, row: 0 },    // 右上：4-5, 6-7
+    { cells: [4, 5], index: 2, col: 0, row: 2 },    // 左下：8-9, 10-11
+    { cells: [6, 7], index: 3, col: 1, row: 2 }     // 右下：12-13, 14-15
+  ];
+
+  const group = overlayGroups[groupIndex];
+  
+  // 计算网格的总高度
+  const totalGridHeight = arrangementGrid.rows * arrangementGrid.cellHeight;
+  // 计算起始坐标
+  let startY = -totalGridHeight / 2;
+  let startX = -width/2 + arrangementGrid.x;
+
+  // 计算覆盖图像的中心位置
+  const centerX = startX + (group.col * arrangementGrid.cellWidth) + arrangementGrid.cellWidth / 2;
+  const centerY = startY + (group.row * arrangementGrid.cellHeight) + arrangementGrid.cellHeight;
+
+  // 绘制覆盖图像
+  if (overlayImages[group.index]) {
+    push();
+    noStroke();
+    translate(centerX, centerY);
+    texture(overlayImages[group.index]);
+    // 调整平面大小以完全覆盖两个格子
+    plane(arrangementGrid.cellWidth - arrangementGrid.padding,
+          arrangementGrid.cellHeight * 2 - arrangementGrid.padding * 2);
+    pop();
+  }
 }
 
 // =============== 主循环渲染 ===============
@@ -319,6 +389,7 @@ function drawGame() {
 
 // 绘制网格系统
 // 修改绘制网格函数，添加标签
+// 修改 drawArrangementGrid 函数
 function drawArrangementGrid() {
   stroke(100);
   strokeWeight(2);
@@ -329,26 +400,12 @@ function drawArrangementGrid() {
   const totalGridHeight = arrangementGrid.rows * arrangementGrid.cellHeight;
   
   // 计算垂直居中的起始Y坐标
-  // 从画布中心开始，减去网格总高度的一半
   let startY = -totalGridHeight / 2;
   let startX = -width/2 + arrangementGrid.x;
-  
-  // 定义每个格子的标签
-  const gridLabels = [
-    "(0-1)",   // 第一格
-    "(4-5)",   // 第二格
-    "(2-3)",   // 第三格
-    "(6-7)",   // 第四格
-    "(8-9)",   // 第五格
-    "(12-13)", // 第六格
-    "(10-11)", // 第七格
-    "(14-15)"  // 第八格
-  ];
   
   // 绘制网格
   for (let row = 0; row < arrangementGrid.rows; row++) {
     for (let col = 0; col < arrangementGrid.cols; col++) {
-      // 计算网格中心点
       let centerX = startX + col * arrangementGrid.cellWidth + arrangementGrid.cellWidth/2;
       let centerY = startY + row * arrangementGrid.cellHeight + arrangementGrid.cellHeight/2;
       
@@ -360,7 +417,7 @@ function drawArrangementGrid() {
            arrangementGrid.cellHeight - arrangementGrid.padding * 2);
            
       // 添加标签
-      fill(0); // 文字颜色为黑色
+      fill(0);
       textSize(16);
       textAlign(CENTER, CENTER);
       let labelIndex = row * arrangementGrid.cols + col;
@@ -397,6 +454,7 @@ function checkGridCell(x, y) {
 
 // 第二阶段（排列阶段）界面绘制
 // 更新绘制函数以显示边界
+// 更新后的 drawArrangingStage 函数
 function drawArrangingStage() {
   background(200);
 
@@ -405,16 +463,16 @@ function drawArrangingStage() {
   textSize(24);
   fill(0);
   text("Arrange the matched cards", 0, -height/2 + 30);
-  
+
   // 初始化卡牌位置
   if (!pairedCardsPositions || pairedCardsPositions.length === 0) {
     initializePairedCardsPositions();
   }
 
-  // 绘制网格
+  // 1. 首先绘制网格
   drawArrangementGrid();
   
-  // 绘制所有卡片对
+  // 2. 绘制卡片和覆盖图(在drawAllPairedCards中处理渲染顺序)
   drawAllPairedCards();
   
   // 计算提示信息的位置 - 使用相对于画布的定位
@@ -693,18 +751,115 @@ function initializePairedCardsPositions() {
 }
 
 // 绘制所有配对卡牌
+// 绘制所有配对卡牌
+// 绘制所有配对卡牌
+// 更新的绘制所有配对卡牌函数
 function drawAllPairedCards() {
-  for (let pairIndex = pairedCardsPositions.length - 1; pairIndex >= 0; pairIndex--) {
+  // 定义覆盖组映射关系
+  const overlayGroupMapping = {
+    0: [0, 2],  // 左上组: 0-1和2-3对卡牌
+    1: [1, 3],  // 右上组: 4-5和6-7对卡牌
+    2: [4, 5],  // 左下组: 8-9和10-11对卡牌
+    3: [6, 7]   // 右下组: 12-13和14-15对卡牌
+  };
+
+  // 第一步：绘制所有已固定但未被覆盖的卡牌
+  for (let pairIndex = 0; pairIndex < pairedCardsPositions.length; pairIndex++) {
     let pairPositions = pairedCardsPositions[pairIndex];
-    for (let i = pairPositions.length - 1; i >= 0; i--) {
-      let cardPos = pairPositions[i];
-      push();
-      translate(cardPos.baseX + cardPos.dragX, cardPos.baseY + cardPos.dragY);
-      texture(cardPos.card.image);
-      plane(cardWidth, cardHeight);
-      pop();
+    let originalPairIndex = Math.floor(pairPositions[0].card.originalIndex / 2);
+    
+    // 找到这对卡牌属于哪个组
+    let groupIndex = Object.entries(overlayGroupMapping).find(([key, value]) => 
+      value.includes(originalPairIndex)
+    )?.[0];
+    
+    if (groupIndex !== undefined) {
+      const cellIndices = overlayGroupMapping[groupIndex];
+      const isGroupComplete = cellIndices.every(cell => completedCells.has(cell));
+      
+      // 如果组未完成或者卡牌未固定，则绘制卡牌
+      if (!isGroupComplete && correctlyPlacedPairs.includes(originalPairIndex)) {
+        for (let i = pairPositions.length - 1; i >= 0; i--) {
+          let cardPos = pairPositions[i];
+          push();
+          noStroke();
+          translate(cardPos.baseX + cardPos.dragX, cardPos.baseY + cardPos.dragY);
+          texture(cardPos.card.image);
+          plane(cardWidth, cardHeight);
+          pop();
+        }
+      }
     }
   }
+
+  // 第二步：绘制覆盖图
+  for (let overlayIndex = 0; overlayIndex < 4; overlayIndex++) {
+    const cellIndices = overlayGroupMapping[overlayIndex];
+    // 只有当组内所有卡牌对都正确放置时才显示覆盖图
+    const isGroupComplete = cellIndices.every(cell => completedCells.has(cell));
+    
+    if (isGroupComplete) {
+      drawOverlayForGroup(overlayIndex);
+    }
+  }
+
+  // 第三步：绘制所有未固定的卡牌
+  for (let pairIndex = pairedCardsPositions.length - 1; pairIndex >= 0; pairIndex--) {
+    let pairPositions = pairedCardsPositions[pairIndex];
+    let originalPairIndex = Math.floor(pairPositions[0].card.originalIndex / 2);
+    
+    // 只绘制未正确放置的卡牌
+    if (!correctlyPlacedPairs.includes(originalPairIndex)) {
+      for (let i = pairPositions.length - 1; i >= 0; i--) {
+        let cardPos = pairPositions[i];
+        push();
+        noStroke();
+        translate(cardPos.baseX + cardPos.dragX, cardPos.baseY + cardPos.dragY);
+        texture(cardPos.card.image);
+        plane(cardWidth, cardHeight);
+        pop();
+      }
+    }
+  }
+}
+
+// 添加绘制覆盖大图的函数
+function drawOverlayImages() {
+  // 定义四组覆盖区域
+  const overlayGroups = [
+    { cells: [0, 2], index: 0, col: 0, row: 0 },    // 左上：0-1, 2-3
+    { cells: [1, 3], index: 1, col: 1, row: 0 },    // 右上：4-5, 6-7
+    { cells: [4, 5], index: 2, col: 0, row: 2 },    // 左下：8-9, 10-11
+    { cells: [6, 7], index: 3, col: 1, row: 2 }     // 右下：12-13, 14-15
+  ];
+
+  // 计算网格的基础位置
+  const totalGridHeight = arrangementGrid.rows * arrangementGrid.cellHeight;
+  let startY = -totalGridHeight / 2;
+  let startX = -width/2 + arrangementGrid.x;
+
+  // 遍历每组覆盖区域
+  overlayGroups.forEach(group => {
+    // 检查该组是否完成
+    if (group.cells.every(cell => completedCells.has(cell))) {
+      // 计算覆盖图像的中心位置
+      const centerX = startX + (group.col * arrangementGrid.cellWidth) + arrangementGrid.cellWidth / 2;
+      // 使用 row 来计算正确的垂直中心位置
+      const centerY = startY + (group.row * arrangementGrid.cellHeight) + arrangementGrid.cellHeight;
+
+      // 绘制覆盖图像
+      if (overlayImages[group.index]) {
+        push();
+        noStroke();
+        translate(centerX, centerY);
+        texture(overlayImages[group.index]);
+        // 调整平面大小以完全覆盖两个格子
+        plane(arrangementGrid.cellWidth - arrangementGrid.padding,
+              arrangementGrid.cellHeight * 2 - arrangementGrid.padding * 2);
+        pop();
+      }
+    }
+  });
 }
 
 // 检查卡牌匹配
@@ -826,11 +981,42 @@ function verifyGridPlacement(cellIndex, pairCards) {
   if (cellIndex === correctPositions[originalPairIndex]) {
     if (!correctlyPlacedPairs.includes(originalPairIndex)) {
       correctlyPlacedPairs.push(originalPairIndex);
+      
+      // 检查特定组合是否完成
+      checkCompletedGroups();
+      
       reorderMessages();
     }
     return true;
   }
   return false;
+}
+
+// 添加检查完成组的函数
+function checkCompletedGroups() {
+  // 右上组 (4-5, 6-7) 的特殊处理
+  if (correctlyPlacedPairs.includes(2) && correctlyPlacedPairs.includes(3)) {
+    completedCells.add(1);
+    completedCells.add(3);
+  }
+  
+  // 左上组 (0-1, 2-3)
+  if (correctlyPlacedPairs.includes(0) && correctlyPlacedPairs.includes(1)) {
+    completedCells.add(0);
+    completedCells.add(2);
+  }
+  
+  // 左下组 (8-9, 10-11)
+  if (correctlyPlacedPairs.includes(4) && correctlyPlacedPairs.includes(5)) {
+    completedCells.add(4);
+    completedCells.add(5);
+  }
+  
+  // 右下组 (12-13, 14-15)
+  if (correctlyPlacedPairs.includes(6) && correctlyPlacedPairs.includes(7)) {
+    completedCells.add(6);
+    completedCells.add(7);
+  }
 }
 
 
@@ -1080,14 +1266,20 @@ function mouseReleased() {
 // 修改鼠标拖动函数，完善边界限制
 function mouseDragged() {
   if (currentScreen === "game" && gameStage === "arranging" && draggingCard) {
-    hasActuallyDragged = true;
+    // 检查当前拖拽的卡牌是否是已经正确归位的卡牌
+    let draggedPairIndex = Math.floor(draggingCard.pair[0].card.originalIndex / 2);
     
+    // 如果这对卡牌已经正确归位，则禁止拖动
+    if (correctlyPlacedPairs.includes(draggedPairIndex)) {
+      return;
+    }
+    
+    hasActuallyDragged = true;
     let mx = mouseX - width/2;
     let my = mouseY - height/2;
     
-    let pair = draggingCard.pair;
-    
     // 计算当前卡片对的中心点
+    let pair = draggingCard.pair;
     let pairCenterX = (pair[0].baseX + pair[0].dragX + pair[1].baseX + pair[1].dragX) / 2;
     let pairCenterY = (pair[0].baseY + pair[0].dragY + pair[1].baseY + pair[1].dragY) / 2;
     
@@ -1097,7 +1289,7 @@ function mouseDragged() {
     
     // 应用边界约束
     let leftMargin = 20;
-    let rightMargin = 300;
+    let rightMargin = 350;
     let topMargin = 20;
     let bottomMargin = 20;
     
@@ -1105,19 +1297,16 @@ function mouseDragged() {
     let pairWidth = cardWidth * 2 + cardSpacing;
     let pairHeight = cardHeight;
     
-    // 左边界
+    // 边界检查保持不变...
     if (pairCenterX - pairWidth/2 + deltaX < -width/2 + leftMargin) {
       deltaX = (-width/2 + leftMargin) - (pairCenterX - pairWidth/2);
     }
-    // 右边界
     if (pairCenterX + pairWidth/2 + deltaX > width/2 - rightMargin) {
       deltaX = (width/2 - rightMargin) - (pairCenterX + pairWidth/2);
     }
-    // 上边界
     if (pairCenterY - pairHeight/2 + deltaY < -height/2 + topMargin) {
       deltaY = (-height/2 + topMargin) - (pairCenterY - pairHeight/2);
     }
-    // 下边界
     if (pairCenterY + pairHeight/2 + deltaY > height/2 - bottomMargin) {
       deltaY = (height/2 - bottomMargin) - (pairCenterY + pairHeight/2);
     }
