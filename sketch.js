@@ -418,7 +418,7 @@ function drawArrangingStage() {
   drawAllPairedCards();
   
   // 计算提示信息的位置 - 使用相对于画布的定位
-  const relativeX = width * 0.15; // 从画布右侧15%的位置开始
+  const relativeX = width * 0.15+10; // 从画布右侧15%的位置开始
   const messageX = width/2 - relativeX; // 转换为以中心为原点的坐标系
   
   // 消息区域的垂直位置和间距
