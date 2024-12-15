@@ -238,6 +238,7 @@ function setup() {
 }  
 
 // 游戏状态初始化
+// 修改初始化函数，确保所有游戏状态都被重置
 function initGame() {
   // 初始化游戏数据结构
   cards = Array(rows).fill().map(() => Array(cols).fill(0));
@@ -255,29 +256,43 @@ function initGame() {
     }
   }
 
-  // 重置游戏状态
+  // 重置游戏状态变量
   gameStage = "matching";
   gameOver = false;
   remainingClicks = maxClicks;
   pairedCards = [];
   draggingCard = null;
-  correctlyPlacedPairs = [];  // 重置正确放置的数组
-  completedCells = new Set();
   correctlyPlacedPairs = [];
+  completedCells = new Set();
+  matchMessage = "";
   
-  // 确保 arrangementGrid 的属性被正确设置
+  // 重要：重置卡牌选择状态
+  firstCardX = -1;
+  firstCardY = -1;
+  secondCardX = -1;
+  secondCardY = -1;
+  checking = false;
+  checkDelayStart = -1;
+  matchSoundPlayed = false;
+  
+  // 重置布局网格
   arrangementGrid = {
-      cols: 2,
-      rows: 4,
-      x: 160,
-      y: 100,
-      cellWidth: 350,
-      cellHeight: 180,
-      padding: 10,
-      cells: Array(8).fill(null),
-      highlightColor: 'rgba(100, 149, 237, 0.2)'
+    cols: 2,
+    rows: 4,
+    x: 160,
+    y: 100,
+    cellWidth: 350,
+    cellHeight: 180,
+    padding: 10,
+    cells: Array(8).fill(null),
+    highlightColor: 'rgba(100, 149, 237, 0.2)'
   };
-
+  
+  // 重置提示相关状态
+  activePairIndex = -1;
+  cursorY = 0;
+  targetCursorY = 0;
+  hasActuallyDragged = false;
 }
 
 // 添加绘制单个覆盖组的函数
