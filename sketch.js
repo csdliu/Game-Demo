@@ -39,6 +39,12 @@ let completedCells = new Set(); // 存储已完成的格子索引
 let overlayImages = []; // 存储覆盖图片
 
 // 添加到全局变量定义部分
+let isGameCompleted = false; // 跟踪游戏是否已完成
+let completionAnimStartTime = 0; // 记录完成动画开始时间
+let completionFadeIn = 0; // 完成画面淡入效果的值
+
+
+// 添加到全局变量定义部分
 let arrangementGrid = {
   cols: 2,                // 改为2列
   rows: 4,               // 改为4行
@@ -69,17 +75,17 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "final_0.3.2_12-16";  
-let aboutInfo = [  
-  "Team Member List: XUIAOHU SUN,ZAIJIAO CHEN,WENLAN YANG,FU YULONG,YAN XUE",
+let gameVersion = "final_0.3.1+d12-17";  
+let aboutInfo = [ 
+  "Inspired by classic memory games." ,
+  "Team Members: XUIAOHU SUN,ZAIJIAO CHEN,WENLAN YANG,FU YULONG,YAN XUE",
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
-  "Inspired by classic memory games."
 ];  
 
 // 配对提示信息
 let predefinedMessages = [  
-  "바람이 일어나는 곳, 여행의 시작.", "새가 날개를 퍼덕이며, 높은 곳으로 날아간다.",  
+  "여정의 시작에 바람이 나뭇가지 끝을 가볍게 스쳤다.", "새가 날개를 퍼덕이며, 높은 곳으로 날아간다.",  
   "고봉 위, 천지 뒤집히다.", "거울 속 세계, 금이 숨겨져 있다.",  
   "길이 끊어졌지만, 희미한 빛이 앞길을 비춘다.", "미세한 빛이 모여, 별빛이 서서히 밝아진다.",  
   "별빛이 되살아나, 하늘을 밝히다.", "빛은 영원히, 마음 속에 길을 비춘다."  
@@ -276,6 +282,7 @@ function initGame() {
   checkDelayStart = -1;
   matchSoundPlayed = false;
   
+  
   // 重置布局网格
   arrangementGrid = {
     cols: 2,
@@ -294,6 +301,10 @@ function initGame() {
   cursorY = 0;
   targetCursorY = 0;
   hasActuallyDragged = false;
+  isGameCompleted = false;
+  completionAnimStartTime = 0;
+  completionFadeIn = 0;
+  resetCardPositions()
 }
 
 // 添加绘制单个覆盖组的函数
@@ -404,6 +415,39 @@ function drawGame() {
   drawReturnButton();
 }
 
+// 绘制通关画面
+function drawCompletionScreen() {
+  // 计算淡入效果
+  let fadeInDuration = 1000; // 淡入动画持续1秒
+  let elapsedTime = millis() - completionAnimStartTime;
+  completionFadeIn = min(elapsedTime / fadeInDuration, 1);
+  
+  // 半透明背景
+  push();
+  fill(0, 150 * completionFadeIn);
+  rectMode(CENTER);
+  rect(0, 0, width, height);
+  
+  // 通关文字
+  fill(255, 255 * completionFadeIn);
+  textAlign(CENTER, CENTER);
+  
+  // 标题文字有轻微的上下浮动
+  let floatOffset = sin(frameCount * 0.05) * 5;
+  textSize(48);
+  text("Congratulations!", 0, -50 + floatOffset);
+  
+  // 副标题
+  textSize(24);
+  text("You have successfully completed all images!", 0, 20);
+  
+  // 提示文字闪烁效果
+  let blinkAlpha = map(sin(frameCount * 0.1), -1, 1, 0.5, 1);
+  fill(255, 255 * completionFadeIn * blinkAlpha);
+  text("Click anywhere to return to menu", 0, 80);
+  pop();
+}
+
 // 绘制网格系统
 // 修改绘制网格函数，添加标签
 // 修改 drawArrangementGrid 函数
@@ -489,21 +533,17 @@ function drawArrangingStage() {
   // 1. 首先绘制网格
   drawArrangementGrid();
   
-  // 2. 绘制卡片和覆盖图(在drawAllPairedCards中处理渲染顺序)
+  // 2. 绘制卡片和覆盖图
   drawAllPairedCards();
   
-  // 计算提示信息的位置 - 使用相对于画布的定位
-  const relativeX = width * 0.14+100; // 从画布右侧15%的位置开始
-  const messageX = width/2 - relativeX; // 转换为以中心为原点的坐标系
-  
-  // 消息区域的垂直位置和间距
-  const messageStartY = -height * 0.3; // 从画布顶部30%的位置开始
-  const messageSpacing = height * 0.05; // 每条消息间隔为画布高度的5%
+  // 计算提示信息的位置
+  const relativeX = width * 0.14 + 100;
+  const messageX = width/2 - relativeX;
+  const messageStartY = -height * 0.3;
+  const messageSpacing = height * 0.05;
   
   // 绘制提示信息
   textAlign(LEFT, CENTER);
-  
-  // 查找当前激活的提示语索引
   let activeMessageIndex = pairedCards.findIndex(pair => pair.pairIndex === activePairIndex);
   
   // 更新光标目标位置
@@ -514,29 +554,31 @@ function drawArrangingStage() {
   // 平滑移动光标
   cursorY = lerp(cursorY, targetCursorY, cursorLerpSpeed);
   
-  // 绘制光标
+  // 绘制光标和消息
   if (activeMessageIndex !== -1) {
     fill(0);
     noStroke();
     ellipse(messageX - 15, cursorY + 4, 5, 5);
   }
   
-  // 绘制所有消息
   for (let i = 0; i < pairedCards.length; i++) {
     let messageY = messageStartY + i * messageSpacing;
     let isActive = pairedCards[i].pairIndex === activePairIndex;
-    
-    // 设置文字大小
     textSize(isActive ? 18 : 16);
-    
-    // 绘制消息
     fill(isActive ? 0 : 150);
     text(pairedCards[i].message, messageX, messageY);
   }
   
   // 绘制返回按钮和还原按钮
-  drawReturnButton();
-  drawResetButton();
+  if (!isGameCompleted) {
+    drawReturnButton();
+    drawResetButton();
+  }
+  
+  // 如果游戏完成，绘制通关画面
+  if (isGameCompleted) {
+    drawCompletionScreen();
+  }
 }
 
 // =============== UI组件绘制函数 ===============
@@ -603,7 +645,7 @@ function drawResetButton() {
 function resetCardPositions() {
   if (window.soundManager) {
     window.soundManager.play('put',{
-      volume: 0.9,
+      volume: 0.5,
       playbackRate: 2.0
     });
   }
@@ -659,7 +701,7 @@ function drawGameOver() {
   fill(255);  
   textAlign(CENTER, CENTER);  
   textSize(35);  
-  text(remainingClicks === 0 ? "Fail" : "Pass!", 0, -20);  
+  text(remainingClicks === 0 ? "Game Fail" : "Game Pass!", 0, -20);  
   textSize(18);  
   text("Click mouse to restart", 0, 20);
 }  
@@ -869,7 +911,7 @@ function checkMatching() {
       // 只有在声音还没播放时才播放
       if (window.soundManager && !matchSoundPlayed) {
         window.soundManager.play('ding', {
-          volume: 0.8,
+          volume: 0.5,
           playbackRate: 1.0
         });
         matchSoundPlayed = true;
@@ -882,7 +924,7 @@ function checkMatching() {
       
       if (window.soundManager) {
         window.soundManager.play('flip', {
-          volume: 1,
+          volume: 0.8,
           playbackRate: 0.9
         });
       }
@@ -911,11 +953,11 @@ function checkGameOver() {
   }
 
   if (allMatched || remainingClicks <= 0) {
-    if (gameStage === "matching") {
+    if (remainingClicks <= 0) {
+      gameOver = true;
+    } else if (gameStage === "matching") {
       gameStage = "arranging";
       arrangePairedCards();
-    } else if (remainingClicks <= 0) {
-      gameOver = true;
     }
   }
 }
@@ -985,7 +1027,6 @@ function verifyGridPlacement(cellIndex, pairCards) {
 
 // 添加检查完成组的函数
 // 修改 checkCompletedGroups 函数来确保只有在两对卡片都正确放置时才标记为完成
-// 修改检查完成组的函数
 // 修改完成组检查函数，更精确地定义组的结构
 function checkCompletedGroups() {
   // 清除之前的完成状态
@@ -1019,6 +1060,7 @@ function checkCompletedGroups() {
     }
   ];
 
+  let completedGroupsCount = 0;
   // 检查每个组
   for (const group of groups) {
     const isTopPairPlaced = correctlyPlacedPairs.includes(group.topPair);
@@ -1027,7 +1069,20 @@ function checkCompletedGroups() {
     // 只有当组内两对卡片都正确放置时，才标记该组为完成
     if (isTopPairPlaced && isBottomPairPlaced) {
       group.cells.forEach(cell => completedCells.add(cell));
-      console.log(`${group.name} group completed fully`);
+      completedGroupsCount++;
+    }
+  }
+
+  // 检查是否所有组都完成（即游戏通关）
+  if (completedGroupsCount === 4 && !isGameCompleted) {
+    isGameCompleted = true;
+    completionAnimStartTime = millis();
+    
+    if (window.soundManager) {
+      window.soundManager.play('ding', {
+        volume: 1.0,
+        playbackRate: 0.8
+      });
     }
   }
 }
@@ -1079,15 +1134,9 @@ function reorderMessages() {
       unplacedIndex++;
     }
   }
-  
   // 更新pairedCards数组，过滤掉可能的null值
   pairedCards = reorderedPairedCards.filter(pair => pair !== null);
 
-  // Debug输出
-  if (debug) {
-    console.log('Correctly placed pairs:', correctlyPlacedPairs);
-    console.log('Reordered messages:', pairedCards.map(p => Math.floor(p.cards[0].originalIndex / 2)));
-  }
 }
 
 // =============== 事件处理函数 ===============
@@ -1144,6 +1193,13 @@ function findGroupByPairIndex(pairIndex) {
 // 修改鼠标事件相关函数，保持原有的激活功能
 // 修改鼠标按下事件处理函数
 function mousePressed() {
+  if (currentScreen === "game" && gameStage === "arranging" && isGameCompleted) {
+    if (completionFadeIn >= 1) { // 等待淡入动画完成后才能点击
+      currentScreen = "menu";
+      isGameCompleted = false;
+      return;
+    }
+  }
   if (currentScreen === "game" && gameStage === "arranging") {
     let mx = mouseX - width/2;
     let my = mouseY - height/2;
@@ -1220,7 +1276,7 @@ function mousePressed() {
         revealed[cardY][cardX] = true;
         if (window.soundManager) {
           window.soundManager.play('flip', {
-            volume: 1,
+            volume: 0.5,
             playbackRate: 1
           });
         }
@@ -1315,7 +1371,7 @@ function mouseReleased() {
       
       if (window.soundManager) {
         window.soundManager.play('put', {
-          volume: 0.9,
+          volume: 0.8,
           playbackRate: 1.0
         });
       }
@@ -1327,10 +1383,7 @@ function mouseReleased() {
 }
 
 
-// 鼠标拖动事件处理
-// 修改 mouseDragged 函数
-// 更新鼠标拖动函数以保持卡片对的相对位置
-// 更新鼠标拖动函数以确保卡片在画布内
+
 // 修改鼠标拖动函数，完善边界限制
 function mouseDragged() {
   if (currentScreen === "game" && gameStage === "arranging" && draggingCard) {
@@ -1469,14 +1522,6 @@ function checkSnapToOtherPairs(currentPair, deltaX, deltaY) {
   return { deltaX, deltaY };
 }
 
-// 添加调试函数
-function debugPrintState(cellIndex, pairCards) {
-  let originalPairIndex = Math.floor(pairCards[0].card.originalIndex / 2);
-  console.log(`Placing pair ${originalPairIndex} in cell ${cellIndex}`);
-  console.log('Current correctly placed pairs:', correctlyPlacedPairs);
-  console.log('Completed cells:', Array.from(completedCells));
-}
-
 // 修改 verifyGridPlacement 函数
 function verifyGridPlacement(cellIndex, pairCards) {
   let originalPairIndex = Math.floor(pairCards[0].card.originalIndex / 2);
@@ -1497,7 +1542,6 @@ function verifyGridPlacement(cellIndex, pairCards) {
   if (cellIndex === correctPositions[originalPairIndex]) {
     if (!correctlyPlacedPairs.includes(originalPairIndex)) {
       correctlyPlacedPairs.push(originalPairIndex);
-      console.log(`Pair ${originalPairIndex} correctly placed in cell ${cellIndex}`);
       checkCompletedGroups();
       reorderMessages()
       return true;
