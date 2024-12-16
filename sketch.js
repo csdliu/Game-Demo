@@ -69,8 +69,9 @@ let cardBackImage;                       // 卡牌背面图像
 let myFont;                              // 游戏字体
 
 // 游戏配置信息
-let gameVersion = "test_0.3.1+p_12-15";  
+let gameVersion = "final_0.3.2_12-16";  
 let aboutInfo = [  
+  "Team Member List: XUIAOHU SUN,ZAIJIAO CHEN,WENLAN YANG,FU YULONG,YAN XUE",
   "Game developed by: XUIAOHU SUN",
   "card design by: WENLAN YANG, FU YULONG",  
   "Inspired by classic memory games."
@@ -78,10 +79,10 @@ let aboutInfo = [
 
 // 配对提示信息
 let predefinedMessages = [  
-  "This is the first pair: 0&1", "This is the second pair: 2&3",  
-  "This is the third pair: 4&5", "This is the fourth pair: 6&7",  
-  "This is the fifth pair: 8&9", "This is the sixth pair: 10&11",  
-  "This is the seventh pair: 12&13", "This is the eighth pair: 14&15"  
+  "바람이 일어나는 곳, 여행의 시작.", "새가 날개를 퍼덕이며, 높은 곳으로 날아간다.",  
+  "고봉 위, 천지 뒤집히다.", "거울 속 세계, 금이 숨겨져 있다.",  
+  "길이 끊어졌지만, 희미한 빛이 앞길을 비춘다.", "미세한 빛이 모여, 별빛이 서서히 밝아진다.",  
+  "별빛이 되살아나, 하늘을 밝히다.", "빛은 영원히, 마음 속에 길을 비춘다."  
 ];  
 
 
@@ -492,7 +493,7 @@ function drawArrangingStage() {
   drawAllPairedCards();
   
   // 计算提示信息的位置 - 使用相对于画布的定位
-  const relativeX = width * 0.15+10; // 从画布右侧15%的位置开始
+  const relativeX = width * 0.14+100; // 从画布右侧15%的位置开始
   const messageX = width/2 - relativeX; // 转换为以中心为原点的坐标系
   
   // 消息区域的垂直位置和间距
@@ -558,7 +559,7 @@ function drawButton(label, x, y, onClick) {
   if (hovered && mouseIsPressed) {
     if (window.soundManager) {
       window.soundManager.play('buttonDown',{
-        volume: 0.4,         // 稍微降低音量
+        volume: 1,         // 稍微降低音量
         playbackRate: 1    // 正常播放速率
       });
     }
@@ -602,7 +603,7 @@ function drawResetButton() {
 function resetCardPositions() {
   if (window.soundManager) {
     window.soundManager.play('put',{
-      volume: 0.5,
+      volume: 0.9,
       playbackRate: 2.0
     });
   }
@@ -725,7 +726,7 @@ function initializePairedCardsPositions() {
   
   // 使用相对位置计算
   const config = {
-    startX: width * 0.6,              // 使用画布宽度的60%作为起始位置
+    startX: width * 0.56,              // 使用画布宽度的60%作为起始位置
     verticalSpacing: cardHeight * -0.5, // 垂直间距
   };
   
@@ -868,7 +869,7 @@ function checkMatching() {
       // 只有在声音还没播放时才播放
       if (window.soundManager && !matchSoundPlayed) {
         window.soundManager.play('ding', {
-          volume: 0.5,
+          volume: 0.8,
           playbackRate: 1.0
         });
         matchSoundPlayed = true;
@@ -881,7 +882,7 @@ function checkMatching() {
       
       if (window.soundManager) {
         window.soundManager.play('flip', {
-          volume: 0.8,
+          volume: 1,
           playbackRate: 0.9
         });
       }
@@ -1219,7 +1220,7 @@ function mousePressed() {
         revealed[cardY][cardX] = true;
         if (window.soundManager) {
           window.soundManager.play('flip', {
-            volume: 0.5,
+            volume: 1,
             playbackRate: 1
           });
         }
@@ -1314,7 +1315,7 @@ function mouseReleased() {
       
       if (window.soundManager) {
         window.soundManager.play('put', {
-          volume: 0.4,
+          volume: 0.9,
           playbackRate: 1.0
         });
       }
@@ -1356,7 +1357,7 @@ function mouseDragged() {
     
     // 应用边界约束
     let leftMargin = 20;
-    let rightMargin = 350;
+    let rightMargin = 343;
     let topMargin = 20;
     let bottomMargin = 20;
     
