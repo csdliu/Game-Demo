@@ -13,7 +13,13 @@ let gridLabels = [
   "(10-11)", // 第七格
   "(14-15)"  // 第八格
 ];
-
+let currentLanguage = 'ko'; // 'ko' for Korean, 'zh' for Chinese
+let languageButton = {
+  x: 0,
+  y: 0,
+  width: 60,
+  height: 30
+};
 // 游戏状态变量
 let cards;              // 卡牌矩阵
 let revealed;          // 卡牌是否被翻开
@@ -54,7 +60,7 @@ let arrangementGrid = {
   cellHeight: 180,       // 调整单元格高度
   padding: 10,           // 单元格内边距
   cells: [],             // 存储每个格子的状态
-  highlightColor: 'rgba(100, 149, 237, 0.2)'  // 高亮颜色
+  highlightColor: 'rgba(42, 64, 105, 0.31)'  // 高亮颜色
 };
 
 // 拖拽相关变量
@@ -84,12 +90,29 @@ let aboutInfo = [
 ];  
 
 // 配对提示信息
-let predefinedMessages = [  
-  "여정의 시작에 바람이 나뭇가지 끝을 가볍게 스쳤다.", "새가 날개를 퍼덕이며, 높은 곳으로 날아간다.",  
-  "고봉 위, 천지 뒤집히다.", "거울 속 세계, 금이 숨겨져 있다.",  
-  "길이 끊어졌지만, 희미한 빛이 앞길을 비춘다.", "미세한 빛이 모여, 별빛이 서서히 밝아진다.",  
-  "별빛이 되살아나, 하늘을 밝히다.", "빛은 영원히, 마음 속에 길을 비춘다."  
-];  
+const messages = {
+  ko: [  
+    "旅程伊始，微风轻拂树梢。",
+    "鸟儿振翅，飞向高处。",
+    "巅峰之上，天地倒转。",
+    "镜中世界，暗藏裂痕。",
+    "路途断绝，微光指引前路。",
+    "星光汇聚，渐次明亮。",
+    "星光复苏，照亮天际。",
+    "光芒永恒，照亮心中的路。"  
+  ],
+  zh: [
+    
+    "여정의 시작에 바람이 나뭇가지 끝을 가볍게 스쳤다.", 
+    "새가 날개를 퍼덕이며, 높은 곳으로 날아간다.",  
+    "고봉 위, 천지 뒤집히다.", 
+    "거울 속 세계, 금이 숨겨져 있다.",  
+    "길이 끊어졌지만, 희미한 빛이 앞길을 비춘다.", 
+    "미세한 빛이 모여, 별빛이 서서히 밝아진다.",  
+    "별빛이 되살아나, 하늘을 밝히다.", 
+    "빛은 영원히, 마음 속에 길을 비춘다."
+  ]
+};
 
 
 // 音效管理器类
@@ -191,9 +214,6 @@ class SoundManager {
 // 创建全局音效管理器实例
 window.soundManager = new SoundManager();
 
-// 创建全局音效管理器实例
-window.soundManager = new SoundManager();
-
 // =============== 初始化函数 ===============
 
 // 画布大小更新
@@ -220,7 +240,7 @@ function windowResized() {
 
 // 资源预加载
 async function preload() {
-  myFont = loadFont('assets/font/AppleSDGothicNeo-Bold.ttf');
+  myFont = loadFont('assets/font/Noto Sans CJK Regular.otf');
   for (let i = 0; i < 16; i++) {
     cardFrontImages.push(loadImage(`assets/pictures/${i}.png`));
   }
@@ -305,6 +325,7 @@ function initGame() {
   completionAnimStartTime = 0;
   completionFadeIn = 0;
   resetCardPositions()
+  predefinedMessages = messages[currentLanguage];
 }
 
 // 添加绘制单个覆盖组的函数
@@ -376,7 +397,7 @@ function draw() {
 // 菜单界面绘制
 function drawMenu() {  
   textAlign(CENTER, CENTER);  
-  textSize(48);  
+  textSize(50);  
   fill(0);  
   text("Memory Game Demo", 0, -200);  
 
@@ -581,6 +602,39 @@ function drawArrangingStage() {
   }
 }
 
+function handleLanguageSwitch() {
+  let buttonCenterX = width/2 + languageButton.x;
+  let buttonCenterY = height/2 + languageButton.y;
+  
+  if (mouseX > buttonCenterX - languageButton.width/2 && 
+      mouseX < buttonCenterX + languageButton.width/2 &&
+      mouseY > buttonCenterY - languageButton.height/2 && 
+      mouseY < buttonCenterY + languageButton.height/2) {
+    // 切换语言
+    currentLanguage = currentLanguage === 'ko' ? 'zh' : 'ko';
+    // 更新当前的提示消息
+    predefinedMessages = messages[currentLanguage];
+    
+    // 如果在游戏第二阶段，更新所有卡片对的消息
+    if (currentScreen === "game" && gameStage === "arranging") {
+      for (let i = 0; i < pairedCards.length; i++) {
+        if (pairedCards[i]) {
+          pairedCards[i].message = predefinedMessages[pairedCards[i].pairIndex];
+        }
+      }
+    }
+    
+    // 播放按钮音效
+    if (window.soundManager) {
+      window.soundManager.play('buttonDown', {
+        volume: 0.4,
+        playbackRate: 1.0
+      });
+    }
+  }
+}
+
+
 // =============== UI组件绘制函数 ===============
 
 // 按钮绘制
@@ -667,11 +721,40 @@ function drawReturnButton() {
 
 // 版本信息绘制
 function drawVersion() {  
+  // 绘制版本信息
   textAlign(RIGHT, BOTTOM);
   textSize(16);  
   fill(0);  
-  text(`Version: ${gameVersion}`, width / 2 - 20, height / 2 - 20);
-}  
+  text(`Version: ${gameVersion}`, width / 2 - 90, height / 2 - 20);
+  
+  // 只在主菜单界面显示语言切换按钮
+  if (currentScreen === "menu") {
+    // 计算语言按钮位置
+    languageButton.x = width / 2 - 60;
+    languageButton.y = -height / 2 + 30;
+    
+    // 检查鼠标是否悬停在按钮上
+    let hovered = mouseX > width/2 + languageButton.x - languageButton.width/2 && 
+                  mouseX < width/2 + languageButton.x + languageButton.width/2 &&
+                  mouseY > height/2 + languageButton.y - languageButton.height/2 && 
+                  mouseY < height/2 + languageButton.y + languageButton.height/2;
+    
+    // 绘制语言切换按钮
+    push();
+    rectMode(CENTER);
+    fill(hovered ? '#87CEEB' : '#ADD8E6');
+    rect(languageButton.x, languageButton.y, 
+         languageButton.width, languageButton.height, 5);
+    
+    // 绘制按钮文字
+    fill(0);
+    textAlign(CENTER, CENTER);
+    textSize(14);
+    text(currentLanguage === 'ko' ? '中文' : '한글', 
+         languageButton.x, languageButton.y);
+    pop();
+  }
+}
 
 // 自定义光标绘制
 function drawCustomCursor() {  
@@ -1193,6 +1276,7 @@ function findGroupByPairIndex(pairIndex) {
 // 修改鼠标事件相关函数，保持原有的激活功能
 // 修改鼠标按下事件处理函数
 function mousePressed() {
+  handleLanguageSwitch();
   if (currentScreen === "game" && gameStage === "arranging" && isGameCompleted) {
     if (completionFadeIn >= 1) { // 等待淡入动画完成后才能点击
       currentScreen = "menu";
